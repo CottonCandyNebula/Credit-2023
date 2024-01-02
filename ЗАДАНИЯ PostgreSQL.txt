@@ -1,0 +1,168 @@
+------ ЗАДАНИЕ 3 ------
+
+• Вывести списки групп по заданному направлению с указанием номера группы в формате ФИО, бюджет/внебюджет. Студентов выводить в алфавитном порядке.
+SELECT groupstud.designation as "Группа", students.name AS "Студент", students.budget_place AS "Бюджет" from groupstud, students where groupstud.id = students.id_group
+order by groupstud.designation, students.name;
+
+• Вывести студентов с фамилией, начинающейся с первой буквы вашей фамилии, с указанием ФИО, номера группы и направления обучения.
+SELECT students.name AS "Студент", groupstud.designation AS "Группа", direction.title AS "Направление" 
+FROM direction 
+JOIN groupstud ON direction.id = groupstud.direction_id 
+JOIN students ON Students.id_group = groupstud.id 
+WHERE students.name LIKE 'К%';
+
+• Вывести список студентов для поздравления по месяцам в формате Фамилия И.О., день и название месяца рождения, номером группы и направлением обучения.
+SELECT CONCAT(LEFT(name, POSITION(' ' IN name)),
+CONCAT(LEFT(RIGHT(name, LENGTH(name) - POSITION(' ' IN name)), 1), '. '),
+CONCAT(LEFT(RIGHT(name, LENGTH(name) - POSITION(' ' IN name) - POSITION(' ' IN name)), 1), '.')) as "Студент",
+EXTRACT(DAY FROM students.date_of_birth) as "День",
+CASE
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 1
+THEN 'Январь'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 2
+THEN 'Февраль'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 3
+THEN 'Март'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 4
+THEN 'Апрель'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 5
+THEN 'Май'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 6
+THEN 'Июнь'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 7
+THEN 'Июль'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 8
+THEN 'Август'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 9
+THEN 'Сентябрь'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 10
+THEN 'Октябрь'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 11
+THEN 'Ноябрь'
+WHEN EXTRACT(MONTH FROM Students.date_of_birth) = 12
+THEN 'Декабрь'
+END AS "Месяц",
+groupstud.designation as "Группа",
+direction.title as "Направление"
+FROM students
+JOIN groupstud ON groupstud.id = students.id_group
+JOIN direction ON direction.id = groupstud.direction_id
+ORDER BY EXTRACT(MONTH FROM students.date_of_birth);
+
+• Вывести студентов с указанием возраста в годах.
+SELECT students.name, DATE_PART('year', CURRENT_DATE) - DATE_PART('year', "date_of_birth") AS "age" FROM students;
+
+• Вывести студентов, у которых день рождения в текущем месяце.
+SELECT students.name as "Студент", students.date_of_birth AS "Дата рождения (этот месяц)" 
+FROM students WHERE EXTRACT(MONTH FROM "date_of_birth") = EXTRACT(MONTH FROM CURRENT_DATE);
+
+• Вывести количество студентов по каждому направлению.
+SELECT COUNT(students.name) AS "Количество студентов", direction.title AS "Направление" 
+FROM direction 
+JOIN groupstud ON groupstud.direction_id = direction.id 
+JOIN students ON students.id_group = groupstud.id 
+GROUP BY direction.title;
+
+• Вывести количество бюджетных и внебюджетных мест по группам. Для каждой группы вывести номер и название направления.
+SELECT
+    groupstud.designation AS "Группа",
+    direction.title AS "Направление",
+    SUM(CASE WHEN students.budget_place = true THEN 1 END) AS "Кол-во бюджетных мест",
+    SUM(CASE WHEN students.budget_place = false THEN 1 END) AS "Кол-во внебюджетных мест"
+FROM
+    students
+JOIN
+    groupstud ON students.id_group = groupstud.id
+JOIN
+    direction ON groupstud.direction_id = direction.id
+GROUP BY
+    groupstud.id, direction.title;
+
+------ ЗАДАНИЕ 5 ------
+• Вывести списки групп каждому предмету с указанием преподавателя.
+SELECT direction.title AS "Направление", groupstud.designation AS "Группа", Teachers.name_t AS "Преподаватель", Subjects.subject AS "Предмет" FROM Direction JOIN teachers_and_subjects ON teachers_and_subjects.direction_id = Direction.id JOIN groupstud ON groupstud.direction_id = Direction.id JOIN Teachers ON Teachers.id = teachers_and_subjects.teacher_id JOIN subjects ON teachers_and_subjects.subject_id = subjects.id
+
+• Определить, какую дисциплину изучает максимальное количество студентов.
+SELECT subjects.subject AS "Дисциплина", COUNT(students.name) AS "Сколько студентов изучает"
+FROM subjects
+JOIN teachers_and_subjects ON teachers_and_subjects.subject_id = subjects.id
+JOIN marks ON marks.tas_id = teachers_and_subjects.id
+JOIN students ON Marks.student_id = Students.id
+GROUP BY subjects.subject
+ORDER BY COUNT(students.name) DESC
+LIMIT 1;
+
+• Определить сколько студентов обучатся у каждого их преподавателей.
+SELECT Teachers.name_t AS "Преподаватель", COUNT(Students.id) AS "Кол-во студентов"
+FROM Teachers
+JOIN teachers_and_subjects ON teachers_and_subjects.teacher_id = Teachers.id
+JOIN Marks ON Marks.tas_id = teachers_and_subjects.id
+JOIN Students ON Students.id = marks.student_id 
+GROUP BY teachers.name_t;
+
+• Определить долю сдавших студентов по каждой дисциплине ("нет оценки" или "2" считать не сдавшими)
+-- 0 - значит нет оценки
+-- 2 - значит дисциплина не сдана
+SELECT Subjects.subject AS "Дисциплина", 
+       COUNT(CASE WHEN Marks.mark > 2 THEN 1 ELSE NULL END) AS "Кол-во сдавших" 
+FROM Subjects 
+JOIN teachers_and_subjects ON teachers_and_subjects.subject_id = Subjects.id
+JOIN Marks ON Marks.tas_id = teachers_and_subjects.id
+JOIN Students ON Marks.student_id = Students.id 
+GROUP BY Subjects.subject 
+ORDER BY COUNT(Students.name) DESC;
+
+• Определить среднюю оценку по предметам (для сдавших студентов)
+SELECT Subjects.subject AS "Дисциплина", 
+       AVG(CASE WHEN Marks.mark > 0 THEN Marks.mark ELSE NULL END) AS "Среднее значение" 
+FROM Subjects 
+JOIN teachers_and_subjects ON teachers_and_subjects.subject_id = Subjects.id
+JOIN Marks ON Marks.tas_id = teachers_and_subjects.id
+JOIN Students ON Marks.student_id = Students.id 
+GROUP BY Subjects.subject 
+ORDER BY COUNT(Students.name) DESC;
+
+• Определить группу с максимальной средней оценкой (включая не сдавших)
+SELECT groupstud.designation AS "Группа", AVG(Marks.mark) as "Среднее значение" FROM groupstud
+JOIN Students ON Students.id_group = groupstud.id
+JOIN Marks ON Marks.student_id = Students.id
+GROUP BY groupstud.designation
+ORDER BY AVG(Marks.mark) DESC LIMIT 1
+
+• Вывести студентов со всем оценками отлично и не имеющих несданный экзамен
+SELECT Students.name FROM Students INNER JOIN Marks ON Students.id = Marks.student_id WHERE Marks.mark = 5 GROUP BY Students.id HAVING COUNT(Marks.mark) = 3 AND NOT EXISTS (
+SELECT 1 FROM Marks WHERE Marks.student_id = Students.id AND Marks.mark < 2);
+
+• Вывести кандидатов на отчисление (не сдан не менее двух предметов)
+SELECT Students.name FROM Students JOIN Marks ON Students.id = Marks.student_id WHERE Marks.mark IN (0, 2) GROUP BY Students.name;
+
+------ ЗАДАНИЕ 7 ------
+• Вывести по заданному предмету количество посещенных занятий.
+SELECT COUNT(*) AS "Посещаемость предмета"
+FROM Attendance
+JOIN Study_schedule ON Attendance.schedule_id = Study_schedule.id
+JOIN Subjects ON Study_schedule.subj_id = Subjects.id
+WHERE Subjects.subject = 'Техническая эксплуатация летательных аппаратов и двигателей' AND Attendance.attend = true
+
+• Вывести по заданному предмету количество пропущенных занятий.
+SELECT COUNT(*) AS "Пропуски предмета студентами"
+FROM Attendance
+JOIN Study_schedule ON Attendance.schedule_id = Study_schedule.id
+JOIN Subjects ON Study_schedule.subj_id = Subjects.id
+WHERE Subjects.subject = 'Техническая эксплуатация летательных аппаратов и двигателей'
+AND Attendance.attend = false
+
+• Вывести по заданному преподавателю количество студентов на каждом занятии.
+SELECT Teachers.name_t, Study_schedule.date_lesson, COUNT(*) FROM Teachers JOIN teachers_and_subjects ON teachers_and_subjects.teacher_id = Teachers.id
+JOIN Study_schedule ON Study_schedule.subj_id = teachers_and_subjects.id JOIN Attendance ON Attendance.schedule_id = Study_schedule.id WHERE Attendance.attend= true
+GROUP BY Teachers.id, Study_schedule.id
+
+• Для каждого студента вывести общее время, потраченное на изучение каждого предмета.
+SELECT Students.name, Subjects.subject, Study_schedule.date_lesson, COUNT(*)*1.5
+FROM Students
+JOIN Attendance ON Attendance.stud_id = Students.id
+JOIN Study_schedule ON Study_schedule.id = Attendance.schedule_id
+JOIN teachers_and_subjects ON teachers_and_subjects.id = Study_schedule.subj_id
+JOIN Subjects ON Subjects.id = teachers_and_subjects.subject_id
+WHERE Attendance.attend = true
+GROUP BY Students.id, Subjects.id, Study_schedule.date_lesson
